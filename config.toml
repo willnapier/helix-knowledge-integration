@@ -1,0 +1,140 @@
+# Helix Knowledge Integration Configuration
+# Part of helix-knowledge-integration
+# https://github.com/willnapier/helix-knowledge-integration
+#
+# This configuration adds knowledge management keybindings to Helix editor
+# Requires: nushell-knowledge-tools (https://github.com/willnapier/nushell-knowledge-tools)
+#
+# Installation:
+# 1. Install nushell-knowledge-tools first
+# 2. Copy this file to ~/.config/helix/config.toml (or merge with existing config)
+# 3. Install scripts from scripts/ directory to ~/.local/bin/
+# 4. Set environment variable: export FORGE="/path/to/your/vault"
+
+# Recommended theme (optional - use your preference)
+theme = "solarized_dark"
+
+[editor]
+# Auto-save prevents race conditions with background link watchers
+auto-save = true
+idle-timeout = 500  # 500ms auto-save interval
+
+[keys.normal.space]
+# ============================================================================
+# KNOWLEDGE MANAGEMENT KEYBINDINGS
+# ============================================================================
+
+# Wiki link navigation - Space+w
+# Opens wiki links intelligently: text files in Helix, media in system viewer
+# Works with: [[Note Name]], [[~/Admin/File]], [[2025-10-27]] (daily notes)
+# Creates files if they don't exist with appropriate templates
+w = [
+    "extend_to_line_bounds",
+    ":pipe-to hx-wiki",
+    ":sh sleep 0.1",
+    ":buffer-close! /tmp/helix-current-link.md",
+    ":open /tmp/helix-current-link.md"
+]
+
+# Link insertion from fuzzy picker - Space+l
+# Run fsl in terminal, then paste result with this keybinding
+# Flow: fsl → select note → copies [[Note Name]] → Space+l to paste
+l = ":insert-output pbpaste"  # macOS - change to xclip or wl-paste on Linux
+
+# Smart file opener - Space+o
+# Opens any file type with system default application
+# Works with: PDFs, images, videos, spreadsheets, etc.
+o = ["extend_to_line_bounds", ":pipe-to hx-open-system"]
+
+# Buffer navigation - Space+b (go back to previous buffer)
+# Saves all files, switches to previous buffer, waits for backlinks, reloads
+b = [
+    ":write-all",
+    "goto_previous_buffer",
+    ":sh sleep 0.5",
+    ":reload-all"
+]
+
+# Quick save - Space+m ("memorize")
+m = ":write"
+M = ":write-all"
+
+# Save and return to previous buffer - Space+q
+q = [":write", ":buffer-previous"]
+Q = ":quit!"
+
+# ============================================================================
+# CITATION MANAGEMENT (Optional - requires Zotero setup)
+# ============================================================================
+
+# Citation insertion workflow:
+# 1. Run `cit` in terminal to select citation
+# 2. Press Space+c to paste citation key
+# Note: Change keybinding if you use Space+c for other purposes
+# c = ":insert-output pbpaste"
+
+# ============================================================================
+# DAILY NOTE NAVIGATION (Optional)
+# ============================================================================
+
+# Navigate between daily notes - Space+[ and Space+]
+# Requires: Date-based notes in YYYY-MM-DD format
+# Creates notes if they don't exist using template
+# "[" = [
+#     ":sh prev-day",
+#     ":sh sleep 0.1",
+#     ":buffer-close! /tmp/helix-day-target.md",
+#     ":open /tmp/helix-day-target.md"
+# ]
+# "]" = [
+#     ":sh next-day",
+#     ":sh sleep 0.1",
+#     ":buffer-close! /tmp/helix-day-target.md",
+#     ":open /tmp/helix-day-target.md"
+# ]
+
+# ============================================================================
+# ADVANCED: Custom g-prefix commands (Optional)
+# ============================================================================
+
+[keys.normal.g]
+# Reload all buffers (refresh external changes from link watchers)
+R = ":reload-all"
+
+# Smart wiki link navigation from any line (alternative to Space+w)
+# w = [
+#     "extend_to_line_bounds",
+#     ":pipe-to hx-wiki",
+#     ":sh sleep 0.1",
+#     ":buffer-close! /tmp/helix-current-link.md",
+#     ":open /tmp/helix-current-link.md"
+# ]
+
+# ============================================================================
+# SELECT MODE INTEGRATION (Optional)
+# ============================================================================
+
+# Use selected text as wiki link target (no line expansion)
+# [keys.select.space]
+# w = [
+#     ":pipe-to hx-wiki",
+#     ":sh sleep 0.1",
+#     ":buffer-close! /tmp/helix-current-link.md",
+#     ":open /tmp/helix-current-link.md"
+# ]
+
+# ============================================================================
+# CUSTOMIZATION NOTES
+# ============================================================================
+#
+# Clipboard Commands by Platform:
+# - macOS: pbpaste
+# - Linux (Wayland): wl-paste
+# - Linux (X11): xclip -o
+#
+# Modify keybindings to match your workflow:
+# - Change Space+l to any key you prefer for link insertion
+# - Adjust Space+w if you use that for other purposes
+# - Add/remove optional features based on your needs
+#
+# See docs/customization.md for detailed guidance

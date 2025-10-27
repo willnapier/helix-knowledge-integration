@@ -1,0 +1,68 @@
+#!/usr/bin/env nu
+# hx-open-system - Open files/URLs with system default application
+# Part of helix-knowledge-integration
+# https://github.com/willnapier/helix-knowledge-integration
+#
+# Opens files using system-appropriate command (open/xdg-open)
+# Works with PDFs, images, videos, URLs, etc.
+#
+# Usage: Called by Space+o in Helix (see config.toml)
+
+def main [] {
+    # Read selection from Helix
+    let input = (cat | str trim)
+
+    if ($input | is-empty) {
+        return
+    }
+
+    # Check if it's a URL
+    if ($input | str starts-with "http") or ($input | str starts-with "www") {
+        open_with_system $input
+        return
+    }
+
+    # Check if it's a wiki link
+    if ($input | str contains "[[") {
+        let link = ($input | str replace -r '.*\[\[([^\]]+)\]\].*' '$1')
+
+        # Try to find the file
+        let vault = if not ($env.FORGE? | is-empty) {
+            $env.FORGE
+        } else {
+            $"($env.HOME)/vault"
+        }
+
+        let found_file = try {
+            fd -t f $"($link).md" $vault | lines | first
+        } catch {
+            ""
+        }
+
+        if not ($found_file | is-empty) {
+            open_with_system $found_file
+            return
+        }
+    }
+
+    # Treat as file path
+    if ($input | path exists) {
+        open_with_system $input
+    } else {
+        # Try adding common extensions
+        if $"($input).pdf" | path exists {
+            open_with_system $"($input).pdf"
+        } else if $"($input).md" | path exists {
+            open_with_system $"($input).md"
+        }
+    }
+}
+
+# Cross-platform system opener
+def open_with_system [target: string] {
+    if (sys | get host.name) == "Darwin" {
+        ^open $target
+    } else {
+        ^xdg-open $target
+    }
+}

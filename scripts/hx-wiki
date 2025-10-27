@@ -1,0 +1,270 @@
+#!/usr/bin/env nu
+# hx-wiki - Wiki link handler for Helix (Nushell version)
+# Part of helix-knowledge-integration
+# https://github.com/willnapier/helix-knowledge-integration
+#
+# Extracts wiki links from current line and opens them intelligently
+# Supports: [[Note Name]], [[~/path/to/file]], [[2025-10-27]] (daily notes)
+#
+# Features:
+# - Auto-search across your knowledge base directory
+# - Explicit path support with ~/path syntax
+# - Smart file type handling: text in Helix, media in system viewer
+# - Daily note templates with metrics
+# - Creates new files with appropriate YAML frontmatter
+#
+# Usage: Called by Space+w in Helix (see config.toml)
+# Requires: $env.FORGE set to your knowledge base directory
+
+def main [] {
+    # Read input from Helix pipe
+    let line = (cat | str trim)
+
+    # Debug logging (optional)
+    $line | save --append /tmp/hx-wiki-debug.log
+
+    # Clear old temp file
+    rm -f /tmp/helix-current-link.md
+    let target_file = "/tmp/helix-current-link.md"
+
+    # Extract first wiki link from line (supports [[link]], ![[image]], ?[[unresolved]])
+    let first_link = try {
+        $line | rg -o '[!?]?\[\[[^\]]+\]\]' | lines | first
+    } catch {
+        ""
+    }
+
+    if ($first_link | is-empty) {
+        return
+    }
+
+    # Extract link content from [[link]] (strip !, ?, or both)
+    let link = ($first_link | str replace -r '[!?]*\[\[(.*)\]\]' '$1')
+
+    if ($link | is-empty) {
+        return
+    }
+
+    # Clean link (remove anchors and fragments)
+    let clean_link = ($link | str replace -r '[#|].*' '')
+
+    # Define paths - customize these to your setup
+    let vault = if not ($env.FORGE? | is-empty) {
+        $env.FORGE
+    } else {
+        $"($env.HOME)/vault"  # Default fallback
+    }
+
+    let daily_dir = $"($vault)/daily"  # Customize to your daily notes location
+
+    # Check if link starts with ~/ (explicit path)
+    if ($clean_link | str starts-with "~/") {
+        let expanded_path = ($clean_link | str replace "~/" $"($env.HOME)/")
+
+        # Try exact path
+        if ($expanded_path | path exists) {
+            handle_existing_file $expanded_path $target_file
+            return
+        }
+
+        # Try with .md extension
+        let md_path = $"($expanded_path).md"
+        if ($md_path | path exists) {
+            handle_existing_file $md_path $target_file
+            return
+        }
+
+        # Path doesn't exist - create it
+        create_new_file $md_path $clean_link $target_file
+        return
+    }
+
+    if ($clean_link | str starts-with "/") {
+        # Absolute path
+        if ($clean_link | path exists) {
+            handle_existing_file $clean_link $target_file
+            return
+        }
+
+        let md_path = $"($clean_link).md"
+        if ($md_path | path exists) {
+            handle_existing_file $md_path $target_file
+            return
+        }
+
+        create_new_file $md_path $clean_link $target_file
+        return
+    }
+
+    # Search for existing file in vault
+    let existing_file = try {
+        fd -t f $"^($clean_link).md$" $vault | lines | first
+    } catch {
+        ""
+    }
+
+    if not ($existing_file | is-empty) {
+        # Found exact match
+        ln -sf $existing_file $target_file
+        return
+    }
+
+    # Check for daily note date pattern (YYYY-MM-DD)
+    if ($clean_link =~ '^\d{4}-\d{2}-\d{2}$') {
+        let daily_file = $"($daily_dir)/($clean_link).md"
+
+        if ($daily_file | path exists) {
+            handle_existing_file $daily_file $target_file
+        } else {
+            # Create daily note with template
+            create_daily_note $daily_file $clean_link $target_file
+        }
+        return
+    }
+
+    # Regular note - create in vault root
+    let file = if not ($clean_link | str ends-with ".md") {
+        $"($vault)/($clean_link).md"
+    } else {
+        $"($vault)/($clean_link)"
+    }
+
+    # Handle existing or create new file
+    if ($file | path exists) {
+        handle_existing_file $file $target_file
+    } else {
+        create_new_file $file $clean_link $target_file
+    }
+}
+
+# Handle existing file based on type
+def handle_existing_file [file: string, target_file: string] {
+    let extension = ($file | path parse | get extension)
+
+    match $extension {
+        "md" | "txt" | "text" => {
+            # Text files - create symlink for Helix
+            ln -sf $file $target_file
+        }
+        "pdf" | "PDF" => {
+            # Open in system viewer
+            open_file $file
+        }
+        "png" | "jpg" | "jpeg" | "gif" | "PNG" | "JPG" | "JPEG" | "GIF" => {
+            # Open images in system viewer
+            open_file $file
+        }
+        _ => {
+            # Try system default
+            open_file $file
+        }
+    }
+}
+
+# Cross-platform file opener
+def open_file [file: string] {
+    if (sys | get host.name) == "Darwin" {
+        ^open $file
+    } else {
+        ^xdg-open $file
+    }
+}
+
+# Create new file with YAML frontmatter
+def create_new_file [file: string, clean_link: string, target_file: string] {
+    let extension = ($file | path parse | get extension)
+
+    # Check if it's a media file that doesn't exist
+    let media_extensions = ["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg", "pdf", "mp4", "mov", "avi", "mp3", "wav", "m4a"]
+
+    if ($extension | str downcase) in $media_extensions {
+        # Media file doesn't exist - create error message
+        let error_content = $"# File Not Found
+
+The linked media file does not exist:
+
+**Path**: ($file)
+**Link**: [[($clean_link)]]
+
+This could mean:
+- The file was moved or deleted
+- The filename is misspelled in the wiki link
+- The media hasn't been imported yet
+
+## Search for similar files
+
+```bash
+fd -i \"($file | path basename)\" ~/
+```
+"
+        $error_content | save -f $target_file
+    } else {
+        # Create regular note
+        let note_dir = ($file | path dirname)
+        mkdir $note_dir
+
+        let current_date = (date now | format date "%Y-%m-%d")
+        let current_time = (date now | format date "%H:%M")
+
+        let content = $"---
+tags:
+  -
+date created: ($current_date) ($current_time)
+date modified: ($current_date) ($current_time)
+---
+# ($clean_link)
+
+
+
+## Backlinks
+
+"
+        $content | save -f $file
+        ln -sf $file $target_file
+    }
+}
+
+# Create daily note with template
+def create_daily_note [file: string, clean_link: string, target_file: string] {
+    let daily_dir = ($file | path dirname)
+    mkdir $daily_dir
+
+    let current_time = (date now | format date "%H:%M")
+
+    # Format readable date
+    let readable_date = try {
+        date now | format date "%A, %B %d, %Y"
+    } catch {
+        $clean_link
+    }
+
+    # Calculate previous and next dates
+    let date_obj = ($clean_link | into datetime)
+    let prev_date = ($date_obj | sub 1day | format date "%Y-%m-%d")
+    let next_date = ($date_obj | add 1day | format date "%Y-%m-%d")
+
+    let content = $"---
+tags:
+  - daily
+date created: ($clean_link) ($current_time)
+date modified: ($clean_link) ($current_time)
+---
+# ($readable_date)
+
+## Tasks
+- [ ]
+
+## Notes
+
+
+## Links
+- Previous: [[($prev_date)]]
+- Next: [[($next_date)]]
+
+## Backlinks
+
+"
+
+    $content | save -f $file
+    ln -sf $file $target_file
+}
