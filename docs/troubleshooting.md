@@ -1,8 +1,25 @@
 # Troubleshooting Guide
 
-**Date**: 2025-10-30
+**Date**: 2026-01-12
 **Status**: ✅ Active troubleshooting reference
 **Related**: [Architecture Documentation](./architecture.md)
+
+---
+
+## Changelog
+
+### 2026-01-12 - Critical Bug Fixes
+
+The companion `nushell-knowledge-tools` package received critical bug fixes:
+
+1. **Regex escape bug** in wiki-backlinks - Links not being detected (double-backslash escaping)
+2. **Double-marking bug** in wiki-resolve-mark - `?[[` becoming `???[[` (substring replacement issue)
+3. **File corruption bug** - Safety guards added to prevent empty file writes
+4. **File size/link count filters** - Skip files >500KB or with >100 links (garbage web clip protection)
+
+**Action Required**: Update your `nushell-knowledge-tools` installation to get these fixes.
+
+See [nushell-knowledge-tools changelog](https://github.com/willnapier/nushell-knowledge-tools/blob/main/docs/wiki-link-management.md#changelog) for details.
 
 ---
 
@@ -473,7 +490,7 @@ Default debounce is 2000ms (2 seconds). If you modified this:
 # Check running command
 ps aux | grep wiki-backlinks
 
-# Should show: --debounce-ms 2000 (or similar)
+# Should show: --debounce 2000 (or similar)
 ```
 
 ---
@@ -549,7 +566,7 @@ top -p $(pgrep -d',' wiki-backlinks)
 ```
 
 **Solutions**:
-1. Increase debounce delay: `wiki-backlinks --debounce-ms 5000`
+1. Increase debounce delay: `wiki-backlinks --debounce 5000`
 2. Check for corruption (runaway loops)
 3. Exclude large directories if not needed
 
@@ -581,5 +598,5 @@ If issues persist after trying these troubleshooting steps:
 ---
 
 **Document Status**: ✅ Complete
-**Last Updated**: 2025-10-30
+**Last Updated**: 2026-01-12
 **Covers**: Corruption diagnosis, navigation issues, service management, common errors
