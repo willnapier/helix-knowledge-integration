@@ -377,6 +377,14 @@ This integration follows the **Universal Tool Architecture**:
 
 **This is ONE way to integrate Helix with knowledge tools** - not THE way. Adapt to your workflow!
 
+## Related Repositories
+
+| Repository | Description |
+|------------|-------------|
+| [nushell-knowledge-tools](https://github.com/willnapier/nushell-knowledge-tools) | Universal CLI functions (required prerequisite) |
+| [continuum](https://github.com/willnapier/continuum) | Cross-platform AI conversation logging system |
+| [dotfiles](https://github.com/willnapier/dotfiles) | Full system configuration including file watchers and Rust CLI tools |
+
 ## License
 
 MIT License - See [LICENSE](LICENSE) for details
