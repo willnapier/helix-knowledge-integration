@@ -173,11 +173,18 @@ See [docs/keybindings.md](docs/keybindings.md) for complete reference.
 1. Helix sends current line to `hx-wiki` script via pipe
 2. Script extracts first `[[wiki link]]` using regex
 3. Script searches for file across knowledge base
-4. Creates symlink at `/tmp/helix-current-link.md`
-5. Helix opens the symlink
+4. Creates symlink at `/tmp/helix-current-link.md` (**IPC bridge only**)
+5. Opener resolves the symlink and launches Helix on the **real** note path
+
+**Open path rule (2026-08-12):** Do not leave Helix editing `/tmp/helix-current-link.md` itself. Opening the symlink path causes “file modified by external process” on `:wq` after auto-save / sync. Prefer:
+
+- **Same Helix session (reference config):** write a tiny resolver that copies or opens the real path if you must stay in-process; or accept the bridge only for handoff
+- **Floating / new process (recommended production):** `hx-wiki-open-smart` style — `readlink` the bridge, then `hx "$target"`
+
+See [docs/architecture.md](docs/architecture.md) and [docs/troubleshooting.md](docs/troubleshooting.md).
 
 **Smart Handling:**
-- `.md` files → Open in Helix
+- `.md` files → Open in Helix (on the **resolved** real path)
 - Images/PDFs → Open in system viewer (Preview/xdg-open)
 - Missing files → Create with YAML frontmatter template
 - Date links (`[[2025-10-27]]`) → Daily note template
@@ -253,9 +260,7 @@ Edit `~/.config/helix/config.toml`:
 n = [
     "extend_to_line_bounds",
     ":pipe-to hx-wiki",
-    ":sh sleep 0.1",
-    ":buffer-close! /tmp/helix-current-link.md",
-    ":open /tmp/helix-current-link.md"
+    ":sh sleep 0.1 && hx-wiki-open-smart"
 ]
 ```
 

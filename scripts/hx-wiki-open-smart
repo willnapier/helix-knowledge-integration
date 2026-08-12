@@ -1,0 +1,36 @@
+#!/bin/bash
+# Resolve the wiki symlink bridge and open the *real* note path in Helix.
+#
+# hx-wiki sets /tmp/helix-current-link.md → ~/Vault/Note.md
+# Opening Helix on the symlink path causes “file modified by external process”
+# on :wq after auto-save / sync. Always open the resolved target instead.
+#
+# Prefer Zellij floating pane when available; otherwise launch hx on the target
+# (blocks until quit — fine for short edits from a shell, less ideal from
+# inside Helix without a multiplexer).
+
+set -euo pipefail
+
+bridge=/tmp/helix-current-link.md
+
+if [ -L "$bridge" ]; then
+    target=$(readlink "$bridge")
+    if [ -z "$target" ] || [ ! -e "$target" ]; then
+        echo "Error: wiki bridge symlink is broken: $target" >&2
+        exit 1
+    fi
+elif [ -f "$bridge" ]; then
+    # Rare: error buffer written directly to the bridge path
+    target=$bridge
+else
+    # Media may already have been opened by hx-wiki; nothing to do
+    exit 0
+fi
+
+if [ -n "${ZELLIJ_SESSION_NAME:-}" ] && command -v zellij >/dev/null 2>&1; then
+    # Discard pane-id noise so Helix :sh does not show a cursor popup
+    zellij run --floating --close-on-exit --name wiki -- \
+        hx "$target" >/dev/null
+else
+    exec hx "$target"
+fi

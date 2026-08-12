@@ -51,7 +51,7 @@ cp config.toml ~/.config/helix/config.toml
 cp scripts/* ~/.local/bin/
 
 # Make executable
-chmod +x ~/.local/bin/hx-wiki ~/.local/bin/hx-open-system
+chmod +x ~/.local/bin/hx-wiki ~/.local/bin/hx-open-system ~/.local/bin/hx-wiki-open-smart
 
 # Verify installation
 ls -la ~/.local/bin/hx-*
@@ -111,9 +111,7 @@ Open your existing `~/.config/helix/config.toml` and add:
 w = [
     "extend_to_line_bounds",
     ":pipe-to hx-wiki",
-    ":sh sleep 0.1",
-    ":buffer-close! /tmp/helix-current-link.md",
-    ":open /tmp/helix-current-link.md"
+    ":sh sleep 0.1 && hx-wiki-open-smart"
 ]
 l = ":insert-output pbpaste"  # or wl-paste/xclip on Linux
 o = ["extend_to_line_bounds", ":pipe-to hx-open-system"]
@@ -132,9 +130,7 @@ If you already use these keys, choose different ones:
 n = [
     "extend_to_line_bounds",
     ":pipe-to hx-wiki",
-    ":sh sleep 0.1",
-    ":buffer-close! /tmp/helix-current-link.md",
-    ":open /tmp/helix-current-link.md"
+    ":sh sleep 0.1 && hx-wiki-open-smart"
 ]
 ```
 
@@ -144,6 +140,7 @@ n = [
 # From helix-knowledge-integration directory
 cp scripts/* ~/.local/bin/
 chmod +x ~/.local/bin/hx-*
+# includes hx-wiki, hx-open-system, hx-wiki-open-smart
 ```
 
 ### 5. Test Merged Configuration

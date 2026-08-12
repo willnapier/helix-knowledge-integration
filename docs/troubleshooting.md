@@ -8,6 +8,24 @@
 
 ## Changelog
 
+### 2026-08-12 - Open resolved path, not the symlink bridge
+
+**Symptom**: After `Space+w` on a new or existing note, editing in Helix then `:wq` fails with “file modified by external process” (or similar). `:rl` then `:wq` works.
+
+**Cause**: Helix was opened on the symlink bridge path (`/tmp/helix-current-link.md` → real note). Auto-save / Syncthing / mtime tracking against the symlink path confuses Helix’s external-change guard.
+
+**Fix**: Openers must resolve the bridge and launch Helix on the real file:
+
+```bash
+# hx-wiki-open-smart (or equivalent)
+if [ -L /tmp/helix-current-link.md ]; then
+  target=$(readlink /tmp/helix-current-link.md)
+  hx "$target"
+fi
+```
+
+**Workaround if still on the old pattern**: `:rl` then `:wq`, or `:write!` then `:q`. Prefer fixing the opener.
+
 ### 2026-01-12 - Critical Bug Fixes
 
 The companion `nushell-knowledge-tools` package received critical bug fixes:

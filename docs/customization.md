@@ -22,9 +22,7 @@ Edit `~/.config/helix/config.toml`:
 n = [
     "extend_to_line_bounds",
     ":pipe-to hx-wiki",
-    ":sh sleep 0.1",
-    ":buffer-close! /tmp/helix-current-link.md",
-    ":open /tmp/helix-current-link.md"
+    ":sh sleep 0.1 && hx-wiki-open-smart"
 ]
 ```
 
@@ -33,11 +31,11 @@ n = [
 ```toml
 [keys.normal.space]
 # Add Space+W (capital) for wiki navigation in new pane (requires Zellij)
+# Always open the *resolved* real path, not the symlink bridge.
 W = [
     ":pipe-to hx-wiki",
     ":sh sleep 0.1",
-    ":sh zellij action new-pane --direction right",
-    ":sh zellij action write-chars 'hx /tmp/helix-current-link.md'"
+    ":sh zellij run --direction right --close-on-exit --name wiki -- hx \"$(readlink /tmp/helix-current-link.md)\" >/dev/null"
 ]
 ```
 

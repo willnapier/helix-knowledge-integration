@@ -36,16 +36,16 @@ Editor Integration (helix-knowledge-integration)
 
 **Example**:
 ```toml
-# In config.toml - just invoke the universal function
+# In config.toml — set bridge via hx-wiki, then open *resolved* path
 [keys.normal.space]
 w = [
     "extend_to_line_bounds",
-    ":pipe-to hx-wiki",          # Universal script
-    ":sh sleep 0.1",
-    ":buffer-close! /tmp/helix-current-link.md",
-    ":open /tmp/helix-current-link.md"
+    ":pipe-to hx-wiki",                    # Sets /tmp/helix-current-link.md symlink
+    ":sh sleep 0.1 && hx-wiki-open-smart"  # readlink → hx real/path.md (floating or new process)
 ]
 ```
+
+Same-process `:open /tmp/helix-current-link.md` is an older pattern; prefer resolving before open (see “Why /tmp/” below).
 
 **Why**: Makes the integration maintainable and portable. Logic lives in one place (the universal functions).
 
@@ -95,19 +95,30 @@ w = [
 
 ### Why /tmp/ for Communication?
 
-**Decision**: Use `/tmp/helix-current-link.md` symlink for script-to-Helix communication
+**Decision**: Use `/tmp/helix-current-link.md` symlink for script-to-Helix **IPC** only
 
 **Reasoning**:
 1. **Cross-platform**: Works on macOS, Linux, BSD
 2. **Auto-cleanup**: System clears on reboot
 3. **No vault pollution**: Doesn't create files in knowledge base
-4. **Symlink support**: Helix can open symlinks
-5. **Simple protocol**: Easy to understand and debug
+4. **Simple protocol**: Easy to understand and debug
+5. **Fixed path for keybindings**: Helix cannot compose dynamic `:open` paths, so the bridge path is constant while the target varies
+
+**Open the resolved target (2026-08-12):**
+Helix should **not** keep the buffer path as the symlink. Editing via `hx /tmp/helix-current-link.md` or `:open /tmp/helix-current-link.md` leads to “file modified by external process” on `:wq` (mtime tracking + auto-save / sync tools). Production openers (`hx-wiki-open-smart`, `hx-wiki-open-right`) do:
+
+```bash
+target=$(readlink /tmp/helix-current-link.md)
+hx "$target"   # real vault path
+```
+
+The symlink remains the handoff; the editor buffer is the real note.
 
 **Alternatives Considered**:
-- Direct file paths (rejected: loses smart handling logic)
+- Direct file paths in keybindings (rejected: Helix can't inject dynamic paths into `:open`)
 - Environment variables (rejected: Helix doesn't pass to scripts easily)
 - Named pipes (rejected: more complex, platform differences)
+- Editing through the symlink path (rejected 2026-08-12: save/mtime failures)
 
 ### Why Space+ Prefix?
 

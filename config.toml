@@ -28,12 +28,12 @@ idle-timeout = 500  # 500ms auto-save interval
 # Opens wiki links intelligently: text files in Helix, media in system viewer
 # Works with: [[Note Name]], [[~/Admin/File]], [[2025-10-27]] (daily notes)
 # Creates files if they don't exist with appropriate templates
+# hx-wiki sets the symlink bridge; hx-wiki-open-smart resolves it and opens the
+# real path (do not :open the symlink — causes “file modified by external process”).
 w = [
     "extend_to_line_bounds",
     ":pipe-to hx-wiki",
-    ":sh sleep 0.1",
-    ":buffer-close! /tmp/helix-current-link.md",
-    ":open /tmp/helix-current-link.md"
+    ":sh sleep 0.1 && hx-wiki-open-smart"
 ]
 
 # Link insertion from fuzzy picker - Space+l
@@ -105,9 +105,7 @@ R = ":reload-all"
 # w = [
 #     "extend_to_line_bounds",
 #     ":pipe-to hx-wiki",
-#     ":sh sleep 0.1",
-#     ":buffer-close! /tmp/helix-current-link.md",
-#     ":open /tmp/helix-current-link.md"
+#     ":sh sleep 0.1 && hx-wiki-open-smart"
 # ]
 
 # ============================================================================
@@ -118,9 +116,7 @@ R = ":reload-all"
 # [keys.select.space]
 # w = [
 #     ":pipe-to hx-wiki",
-#     ":sh sleep 0.1",
-#     ":buffer-close! /tmp/helix-current-link.md",
-#     ":open /tmp/helix-current-link.md"
+#     ":sh sleep 0.1 && hx-wiki-open-smart"
 # ]
 
 # ============================================================================
